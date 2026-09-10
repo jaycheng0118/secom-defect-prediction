@@ -1,31 +1,56 @@
-# 🏭 Semiconductor Yield Anomaly Detection & Root Cause Analysis System
+# 半導體晶圓良率異常預警與根因分析 POC
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![LightGBM](https://img.shields.io/badge/Model-LightGBM-green.svg)](https://lightgbm.readthedocs.io/)
-[![FastAPI](https://img.shields.io/badge/Serving-FastAPI-teal.svg)](https://fastapi.tiangolo.com/)
-[![Docker](https://img.shields.io/badge/Container-Docker-2496ED.svg)](https://www.docker.com/)
-
-An end-to-end Machine Learning pipeline and inference service designed for early wafer yield anomaly detection and sensor root cause analysis (RCA) in semiconductor manufacturing, built on the **UCI SECOM Dataset**.
+基於公開半導體感測數據（UCI SECOM），驗證高維感測訊號在極端不平衡情況下的早期異常預警管線，並結合特徵歸因提供製程工程師（PE）排查依據。
 
 ---
 
-## 📌 Business & Technical Overview
+## 1. 核心問題與業務限制
 
-In advanced semiconductor fabrication, detecting yield anomalies (Defect / Failures) at early inspection stages is critical to preventing defective wafers from proceeding downstream. 
-
-### Key Engineering Challenges:
-1. **Extreme Class Imbalance:** Yield failure rate is typically $< 7\%$ (Positive:Negative ratio $\approx$ 1:14).
-2. **High-Dimensional Sensor Noise:** 590+ continuous sensor signals containing missing values, multicollinearity, and zero-variance features.
-3. **Black-Box Limitation:** Process Engineers (PE) require actionable root causes rather than opaque probability scores.
+- 樣本極端不平衡：良率異常（Defect）比例通常低於 7%（正負樣本比約 1:14），傳統模型易偏向多數類別導致漏報。
+- 感測器維度高且雜訊多：包含 590+ 個連續型感測器特徵，存在大量零變異、遺漏值與共線性問題。
+- 黑盒子限制：第一線工程師無法接受純機率評分，必須提供具體的感測器偏差依據（Root Cause）才具備實務排查價值。
 
 ---
 
-## 🏗️ Architecture & Pipeline Workflow
+## 2. 處理流程 (Pipeline Flow)
 
-```mermaid
-graph LR
-    A[Raw Sensor Data<br/>590 Features] --> B[Data Preprocessing &<br/>Variance Filtering]
-    B --> C[Imbalanced Strategy<br/>SMOTE / Focal Weighting]
-    C --> D[LightGBM Classifier<br/>Bayesian Optimization]
-    D --> E[Explainable AI<br/>SHAP Feature Attribution]
-    D --> F[FastAPI Microservice<br/>Real-time Scoring]
+[原始感測資料 590 維]
+  │
+  ▼
+[特徵前處理] 剔除零變異 (Var=0) 與高缺失率欄位 -> 中位數插補
+  │
+  ▼
+[極端不平衡處理] 評估 SMOTE 插補 vs. 損失函數權重調整 (scale_pos_weight)
+  │
+  ▼
+[模型訓練] LightGBM 分類器 + 跨期驗證 (OOT)
+  │
+  ▼
+[推論與歸因] 輸出 Top-K 預警名單 + SHAP 局部特徵貢獻度分析
+
+---
+
+## 3. 實驗紀錄與踩坑筆記 (Engineering Notes)
+
+- 關於過抽樣（SMOTE）的取捨：
+  初期嘗試使用 SMOTE 將異常樣本拉平，但實測發現高維特徵空間中的合成樣本容易產生邊界雜訊，反而造成 False Alarm 增加約 25%。後續改採損失函數阻尼加權（Damped scale_pos_weight），離線 PR-AUC 表現更穩定。
+  
+- 特徵篩選降維：
+  590 個感測器訊號中，有超過 110 個特徵為固定常數或缺失率大於 50%。先行剔除這些無效特徵後，模型推論速度提升近 40%，且未損失預測精度。
+
+- 實務排查指標考量：
+  不採用易失真的 Accuracy 或 ROC-AUC 作為最終標準，改以「Top-5% 警報涵蓋率（Capture Rate）」作為產線量能限制下的主要評估基準。
+
+---
+
+## 4. 待討論與後續優化
+
+- [ ] 感測訊號時序相依性：目前模型假設各批次獨立，後續評估加入滑動窗口（Rolling Window）特徵以捕捉機台老化趨勢。
+- [ ] 推論服務化：目前採批次評估，未來需定義與機台 MES/FDC 串接時的單筆延遲預算（< 100ms）。
+
+---
+
+## 5. 快速執行
+
+pip install -r requirements.txt
+python run_pipeline.py
