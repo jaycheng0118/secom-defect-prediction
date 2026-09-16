@@ -31,7 +31,7 @@
 
 
 
-實驗紀錄與避坑梳理
+實驗紀錄
 合成樣本（SMOTE）評估：
 
 在高維空間（500+ 維度）合成樣本易模糊決策邊界，實測導致假警報（False Alarm）激增近 30%。後續改採直接調整損失函數加權（scale_pos_weight），模型收斂與少數類識別表現顯著回穩。
@@ -46,8 +46,8 @@
 
 
 ├── data/
-│   ├── secom.data              # 原始感測器特徵檔 (自動下載)
-│   └── secom_labels.data       # 標籤檔 (自動下載)
+│   ├── secom.data              # 感測器特徵檔
+│   └── secom_labels.data       # 標籤檔
 ├── output/
 │   └── sensor_shap_summary_v1.2.0.png  # TreeSHAP 根因分析蜂群圖
 ├── run_pipeline.py             # 核心訓練、清洗與 SHAP 歸因主程式
