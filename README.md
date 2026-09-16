@@ -53,3 +53,7 @@
 ├── run_pipeline.py             # 核心訓練、清洗與 SHAP 歸因主程式
 ├── requirements.txt            # 相依套件清單
 └── README.md                   # 專案說明文件
+
+
+pip install -r requirements.txt
+python run_pipeline.py
